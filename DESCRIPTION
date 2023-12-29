@@ -1,10 +1,10 @@
 Package: EVTxgboost
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: Fitting Extreme-Value Theory (EVT) models with the xgboost algorithm
+Version: 0.0.1
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+    person("Jonathan", "Koh", , "jonathan.koh@unibe.ch", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-7287-0588"))
+Description: EVTxgboost is a simple R utility, designed as a package, whose goal is to fit models motivated by univariate and multivariate EVT using distributional boosting. The algorithmic engine is the xgboost R library. 
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
@@ -12,3 +12,5 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 URL: https://github.com/kohrrelation/EVTxgboost
 BugReports: https://github.com/kohrrelation/EVTxgboost/issues
+Imports: 
+  xgboost

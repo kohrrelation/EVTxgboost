@@ -1,4 +1,5 @@
 
+
 grad_gpd <- function(x, log_sigma, xi) {
   (1/exp(log_sigma) * ((1 + xi * x/exp(log_sigma))^((-(xi + 1)/xi) -
                                                       1) * ((-(xi + 1)/xi) * (xi * x * exp(log_sigma)/exp(log_sigma)^2))) +
@@ -54,7 +55,7 @@ myobjective_gpd <- function(preds, dtrain) {
 evalerror_gpd <- function(preds, dtrain) {
   labels <- getinfo(dtrain, "label")
 
-  p <-  d_prob(labels, log_sigma=(preds), xi=xi_val )
+  p <-  d_prob(labels, log_sigma=(preds), xi=xi )
 
   err <- mean( (p))
   return(list(metric = "MyError", value = err))

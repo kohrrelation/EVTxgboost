@@ -1,5 +1,6 @@
 
-
+log_xi <- log(0.1)
+log_sigma <- log(1)
 
 d_prob <- function(x, preds, log_xi, exponential=FALSE) {
   if (exponential==TRUE){
@@ -103,8 +104,8 @@ hess_gpd_xi <- function(x, preds, log_xi) {
 
 myobjective_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  grad <- grad_gpd(labels, preds, log_xi, exponential)
-  hess <- hess_gpd(labels, preds, log_xi, exponential)
+  grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE)
+  hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE)
   return(list(grad = grad, hess = hess))
 }
 
@@ -117,10 +118,26 @@ myobjective_gpd_xi <- function(preds, dtrain) {
 }
 
 
+myobjective_exponential <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  grad <- grad_gpd(labels, preds, log_xi, exponential=TRUE)
+  hess <- hess_gpd(labels, preds, log_xi, exponential=TRUE)
+  return(list(grad = grad, hess = hess))
+}
+
+
 
 evalerror_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  p <-  d_prob(labels, preds, log_xi=log_xi )
+  p <-  d_prob(labels, preds, log_xi=log_xi , exponential=FALSE)
+  err <- mean( (p))
+  return(list(metric = "MyError", value = err))
+}
+
+
+evalerror_exponential <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  p <-  d_prob(labels, preds, exponential=TRUE)
   err <- mean( (p))
   return(list(metric = "MyError", value = err))
 }

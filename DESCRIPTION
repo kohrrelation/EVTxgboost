@@ -4,7 +4,7 @@ Version: 0.0.1
 Authors@R: 
     person("Jonathan", "Koh", , "jonathan.koh@unibe.ch", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-7287-0588"))
-Description: EVTxgboost is a simple R utility, designed as a package, whose goal is to fit models motivated by univariate and multivariate EVT using distributional boosting. The algorithmic engine is the xgboost R library. 
+Description: EVTxgboost is a simple R utility, designed as a package, whose goal is to fit models motivated by univariate and multivariate EVT using distributional boosting. The base algorithmic engine is the xgboost R library. 
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
@@ -13,4 +13,4 @@ RoxygenNote: 7.2.1
 URL: https://github.com/kohrrelation/EVTxgboost
 BugReports: https://github.com/kohrrelation/EVTxgboost/issues
 Imports: 
-  xgboost
+  xgboost, ggplot2, foreach, caret

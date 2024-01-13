@@ -212,8 +212,8 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
   if (init.sigma<=0)
     stop("Sigma must be positive")
 
-  if (nthread<=0)
-    stop("nthread must be positive")
+  # if (nthread<=0)
+  #   stop("nthread must be positive")
 
   dtrain_all <- xgboost::xgb.DMatrix(data=as.matrix(X),label=y)
   xgboost::setinfo(dtrain_all, 'base_margin', rep(log(init.sigma), nrow(X)))
@@ -294,8 +294,8 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
 
     table_values <- data.frame(x = rep(1:nrounds , length(xis)),
                             y = as.numeric(sapply(1:length(xis), function(x) model_list_cv[[x]]$evaluation_log$test_GPD_loss_mean )),
-                            ll95 = as.numeric(sapply(1:length(xis), function(x) model_list_cv[[x]]$evaluation_log$test_GPD_loss_mean + 1.96*model_list_cv[[x]]$evaluation_log$test_GPD_loss_std/sqrt(cv.nfold) )),
-                            ul95 = as.numeric(sapply(1:length(xis), function(x) model_list_cv[[x]]$evaluation_log$test_GPD_loss_mean - 1.96*model_list_cv[[x]]$evaluation_log$test_GPD_loss_std/sqrt(cv.nfold) )),
+                            ll95 = as.numeric(sapply(1:length(xis), function(x) model_list_cv[[x]]$evaluation_log$test_GPD_loss_mean + 1*model_list_cv[[x]]$evaluation_log$test_GPD_loss_std/sqrt(cv.nfold) )),
+                            ul95 = as.numeric(sapply(1:length(xis), function(x) model_list_cv[[x]]$evaluation_log$test_GPD_loss_mean - 1*model_list_cv[[x]]$evaluation_log$test_GPD_loss_std/sqrt(cv.nfold) )),
                             xi=rep(round(xis,2),each=nrounds))
 
 
@@ -397,10 +397,9 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
     }
 
     if (is.null(nthread)){
-      cl <- parallel::makeCluster(parallel::detectCores()-1)
+      cl <- parallel::makeCluster(parallel::detectCores())
       doParallel::registerDoParallel(cl)
-      #parallel::clusterCall(cl, function() {library(EVTxgboost)})
-      table_values_par <- foreach::foreach(i=1:cv.nfold, .combine=list,
+      table_values_par <- foreach::foreach(i=1:cv.nfold, .combine=c,
                                        .packages = 'EVTxgboost') %dopar% {
         runXG(i)
       }
@@ -427,8 +426,8 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
 
     table_values <- data.frame(x = 1:(nrounds*2),
                                y = mean_error,
-                               ll95 = mean_error + 1.96*std_error/sqrt(cv.nfold) ,
-                               ul95 = mean_error- 1.96*std_error/sqrt(cv.nfold) )
+                               ll95 = mean_error + 1*std_error/sqrt(cv.nfold) ,
+                               ul95 = mean_error- 1*std_error/sqrt(cv.nfold) )
 
     tab.cv <- cbind(table_values$x,table_values$y, table_values$ll95)
     indx.min <- tab.cv[which.min(tab.cv[,2]),1]

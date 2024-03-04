@@ -6,9 +6,11 @@ library(rgdal)
 library(maps)
 library(dplyr)
 
-regions <- readOGR("National_GACC_Current_20210112.shp")
+load("~/OneDrive - Universitaet Bern/PhD/Research/EVA21 challenge/Writing/data_full.RData")
 
+regions <- readOGR("~/OneDrive - Universitaet Bern/PhD/Research/EVA21 challenge/Code/National_GACC_Boundaries-shp/National_GACC_Current_20210112.shp")
 
+loc.data <- unique( cbind(data_DF$lon, data_DF$lat) )
 coords <- data.frame(Longitude=loc.data[,1], Lattitude=loc.data[,2])
 coordinates(coords) <- c("Longitude","Lattitude")
 as(coords,"SpatialPoints")
@@ -67,6 +69,10 @@ for (j in c(4,9)){
 }
 
 
+plot(loc.data)
+for (j in c(3)){
+  points(loc.data_2[which(loc.data_2[,3]==j),1:2], col=j,pch=19)
+}
 
 
 # read data:
@@ -92,5 +98,14 @@ data_train_DF <- data_DF[which(data_DF$dep %in% c(4,9)), -ncol(data_DF)]
 head(data_train_DF)
 Cali_DF <- data_train_DF
 
-save(data_train_DF, file='Cali.RData')
+save(data_train_DF, file='Cali.rda')
 #plot(data_train_DF$lon, data_train_DF$lat)
+
+
+data_train_DF <- data_DF[which(data_DF$dep %in% c(3)), -ncol(data_DF)]
+
+head(data_train_DF)
+GB_DF <- data_train_DF
+save(GB_DF, file='GB.rda')
+
+

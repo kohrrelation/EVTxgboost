@@ -18,14 +18,30 @@ for (i in 1:n){
 mean(beta_truth)
 mean(xi_truth)
 
-test_cv <- GPDxgb.cv(y,X, xi=0.4, init.sigma=3, stepsize=0.01, stepsize_xi=0.01,
+
+test_result <- GPDxgb.train(y,X, xi=0.4, init.sigma=1, stepsize=0.01, stepsize_xi=0.01,
+                            tree_depth = 3,
+                            tree_depth_xi = 3,
+                            nrounds=10,
+                            simultaneous = TRUE, orthogonal = TRUE)
+
+test_cv <- GPDxgb.cv(y,X, xi=0.2, xis=seq(0.5,0.6,by=0.05),
+                     init.sigma=1, stepsize=0.01, stepsize_xi=0.01,
                      tree_depth = 3 ,
                      tree_depth_xi = 3,
-                     nrounds=150,
-                     simultaneous = TRUE, cv.nfold = 5)
+                     nrounds=100,
+                     simultaneous = FALSE, cv.nfold = 5)
 
+test_cv <- GPDxgb.cv(y,X, xi=0.2, xis=seq(0.5,0.6,by=0.05),
+                     init.sigma=1, stepsize=0.01, stepsize_xi=0.01,
+                     tree_depth = 3 ,
+                     tree_depth_xi = 3,
+                     nrounds=100,
+                     simultaneous = TRUE, cv.nfold = 5, orthogonal=FALSE)
+
+test_cv$chosen_xi
 test_cv$indx.1se
-test_cv$table_values
+
 test_cv$indx.min
 
 test_result <- GPDxgb.train(y,X, xi=0.4, init.sigma=3, stepsize=0.01, stepsize_xi=0.01,

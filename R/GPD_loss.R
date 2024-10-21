@@ -2,76 +2,110 @@
 log_xi <- log_xi_out <- log(0.1)
 log_sigma <- log_sigma_out <- log(1)
 
-d_prob <- function(x, preds, log_xi, exponential=FALSE) {
+d_prob <- function(x, preds, log_xi, exponential=FALSE, orthogonal=FALSE) {
   if (exponential==TRUE){
     -( log(1/exp(preds)) - x/exp(preds) )
   } else {
-    -log( 1/exp(preds) * (1+exp(log_xi)*x/exp(preds))^(-(exp(log_xi)+1)/exp(log_xi)) )
+    if (orthogonal==FALSE){
+      -log( 1/exp(preds) * (1+exp(log_xi)*x/exp(preds))^(-(exp(log_xi)+1)/exp(log_xi)) )
+    } else {
+      (1+1/exp(log_xi))*log(1+ exp(log_xi)*(exp(log_xi)+1)*x/exp(preds)) +((preds)) -log(exp(log_xi)+1)
+    }
   }
 }
 
-grad_gpd <- function(x, preds, log_xi, exponential=FALSE) {
+# d_prob(0.6,log(1.5),log(0.1))
+# fExtremes::dgpd(x=0.6,mu=0,beta=(1.5),xi=0.1, log=TRUE)
+# d_prob(0.6,log((1.5)*((0.1)+1)),log(0.1), orthogonal=TRUE)
+
+
+grad_gpd <- function(x, preds, log_xi, exponential=FALSE, orthogonal=FALSE) {
   if (exponential==TRUE){
     exp(preds)/exp(preds)^2/(1/exp(preds)) - x * exp(preds)/exp(preds)^2
   } else {
-    (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
-                                                            1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
-                                                                                      (exp(log_xi) * x * exp(preds)/exp(preds)^2))) + exp(preds)/exp(preds)^2 *
-       (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))/(1/exp(preds) *
-                                                                             (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))
+    if (orthogonal==FALSE){
+      (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
+                                                              1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
+                                                                                        (exp(log_xi) * x * exp(preds)/exp(preds)^2))) + exp(preds)/exp(preds)^2 *
+         (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))/(1/exp(preds) *
+                                                                               (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))
+    } else {
+      1 - (1 + 1/exp(log_xi)) * (exp(log_xi) * (exp(log_xi) + 1) *
+                                   x * exp(preds)/exp(preds)^2/(1 + exp(log_xi) * (exp(log_xi) +
+                                                                                     1) * x/exp(preds)))
+    }
   }
 }
 
-grad_gpd_xi <- function(x, preds, log_xi) {
+grad_gpd_xi <- function(x, preds, log_xi, exponential=FALSE, orthogonal=FALSE) {
+  if (orthogonal==FALSE){
   -(1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
                                                            1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
                                                                                      (exp(log_xi) * x/exp(preds))) - (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) +
                                                                                                                                                            1)/exp(log_xi)) * (log((1 + exp(log_xi) * x/exp(preds))) *
                                                                                                                                                                                 (exp(log_xi)/exp(log_xi) - (exp(log_xi) + 1) * exp(log_xi)/exp(log_xi)^2)))/(1/exp(preds) *
                                                                                                                                                                                                                                                                (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi))))
+  } else {
+    (1 + 1/exp(log_xi)) * ((exp(log_xi) * (exp(log_xi) + 1) + exp(log_xi) *
+                              exp(log_xi)) * x/exp(preds)/(1 + exp(log_xi) * (exp(log_xi) +
+                                                                                1) * x/exp(preds))) - exp(log_xi)/exp(log_xi)^2 * log(1 +
+                                                                                                                                        exp(log_xi) * (exp(log_xi) + 1) * x/exp(preds)) - exp(log_xi)/(exp(log_xi) +
+                                                                                                                                                                                                         1)
+  }
 }
 
-hess_gpd <- function(x, preds, log_xi,exponential=FALSE) {
+
+hess_gpd <- function(x, preds, log_xi,exponential=FALSE, orthogonal=FALSE) {
   if (exponential==TRUE){
     (exp(preds)/exp(preds)^2 - exp(preds) * (2 * (exp(preds) * exp(preds)))/(exp(preds)^2)^2)/(1/exp(preds)) +
       exp(preds)/exp(preds)^2 * (exp(preds)/exp(preds)^2)/(1/exp(preds))^2 -
       (x * exp(preds)/exp(preds)^2 - x * exp(preds) * (2 * (exp(preds) *
                                                               exp(preds)))/(exp(preds)^2)^2)
   } else {
-    (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
-                                                            1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
-                                                                                      (exp(log_xi) * x * exp(preds)/exp(preds)^2 - exp(log_xi) *
-                                                                                         x * exp(preds) * (2 * (exp(preds) * exp(preds)))/(exp(preds)^2)^2)) -
-                       (1 + exp(log_xi) * x/exp(preds))^(((-(exp(log_xi) + 1)/exp(log_xi)) -
-                                                            1) - 1) * (((-(exp(log_xi) + 1)/exp(log_xi)) - 1) * (exp(log_xi) *
-                                                                                                                   x * exp(preds)/exp(preds)^2)) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
-                                                                                                                                                      (exp(log_xi) * x * exp(preds)/exp(preds)^2))) - exp(preds)/exp(preds)^2 *
-       ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) + 1)/exp(log_xi)) -
-                                            1) * ((-(exp(log_xi) + 1)/exp(log_xi)) * (exp(log_xi) *
-                                                                                        x * exp(preds)/exp(preds)^2))) + ((exp(preds)/exp(preds)^2 -
-                                                                                                                             exp(preds) * (2 * (exp(preds) * exp(preds)))/(exp(preds)^2)^2) *
-                                                                                                                            (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)) -
-                                                                                                                            exp(preds)/exp(preds)^2 * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
-                                                                                                                                                                                              1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
-                                                                                                                                                                                                                        (exp(log_xi) * x * exp(preds)/exp(preds)^2)))))/(1/exp(preds) *
-                                                                                                                                                                                                                                                                           (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi))) +
+    if (orthogonal==FALSE){
       (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
                                                               1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
-                                                                                        (exp(log_xi) * x * exp(preds)/exp(preds)^2))) + exp(preds)/exp(preds)^2 *
-         (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi))) *
-      (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
-                                                              1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
-                                                                                        (exp(log_xi) * x * exp(preds)/exp(preds)^2))) + exp(preds)/exp(preds)^2 *
-         (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) +
-                                               1)/exp(log_xi)))/(1/exp(preds) * (1 + exp(log_xi) *
-                                                                                   x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))^2
+                                                                                        (exp(log_xi) * x * exp(preds)/exp(preds)^2 - exp(log_xi) *
+                                                                                           x * exp(preds) * (2 * (exp(preds) * exp(preds)))/(exp(preds)^2)^2)) -
+                         (1 + exp(log_xi) * x/exp(preds))^(((-(exp(log_xi) + 1)/exp(log_xi)) -
+                                                              1) - 1) * (((-(exp(log_xi) + 1)/exp(log_xi)) - 1) * (exp(log_xi) *
+                                                                                                                     x * exp(preds)/exp(preds)^2)) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
+                                                                                                                                                        (exp(log_xi) * x * exp(preds)/exp(preds)^2))) - exp(preds)/exp(preds)^2 *
+         ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) + 1)/exp(log_xi)) -
+                                              1) * ((-(exp(log_xi) + 1)/exp(log_xi)) * (exp(log_xi) *
+                                                                                          x * exp(preds)/exp(preds)^2))) + ((exp(preds)/exp(preds)^2 -
+                                                                                                                               exp(preds) * (2 * (exp(preds) * exp(preds)))/(exp(preds)^2)^2) *
+                                                                                                                              (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)) -
+                                                                                                                              exp(preds)/exp(preds)^2 * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
+                                                                                                                                                                                                1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
+                                                                                                                                                                                                                          (exp(log_xi) * x * exp(preds)/exp(preds)^2)))))/(1/exp(preds) *
+                                                                                                                                                                                                                                                                             (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi))) +
+        (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
+                                                                1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
+                                                                                          (exp(log_xi) * x * exp(preds)/exp(preds)^2))) + exp(preds)/exp(preds)^2 *
+           (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi))) *
+        (1/exp(preds) * ((1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
+                                                                1)/exp(log_xi)) - 1) * ((-(exp(log_xi) + 1)/exp(log_xi)) *
+                                                                                          (exp(log_xi) * x * exp(preds)/exp(preds)^2))) + exp(preds)/exp(preds)^2 *
+           (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) +
+                                                 1)/exp(log_xi)))/(1/exp(preds) * (1 + exp(log_xi) *
+                                                                                     x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))^2
+    } else {
+      -((1 + 1/exp(log_xi)) * ((exp(log_xi) * (exp(log_xi) + 1) * x *
+                                  exp(preds)/exp(preds)^2 - exp(log_xi) * (exp(log_xi) + 1) *
+                                  x * exp(preds) * (2 * (exp(preds) * exp(preds)))/(exp(preds)^2)^2)/(1 +
+                                                                                                        exp(log_xi) * (exp(log_xi) + 1) * x/exp(preds)) + exp(log_xi) *
+                                 (exp(log_xi) + 1) * x * exp(preds)/exp(preds)^2 * (exp(log_xi) *
+                                                                                      (exp(log_xi) + 1) * x * exp(preds)/exp(preds)^2)/(1 + exp(log_xi) *
+                                                                                                                                          (exp(log_xi) + 1) * x/exp(preds))^2))
+    }
   }
 }
 
 
-
-hess_gpd_xi <- function(x, preds, log_xi) {
-  (1/exp(preds) * (((1 + exp(log_xi) * x/exp(preds))^(((-(exp(log_xi) +
+hess_gpd_xi <- function(x, preds, log_xi, orthogonal=FALSE) {
+  if (orthogonal==FALSE){
+    (1/exp(preds) * (((1 + exp(log_xi) * x/exp(preds))^(((-(exp(log_xi) +
                                                             1)/exp(log_xi)) - 1) - 1) * (((-(exp(log_xi) + 1)/exp(log_xi)) -
                                                                                             1) * (exp(log_xi) * x/exp(preds))) - (1 + exp(log_xi) * x/exp(preds))^((-(exp(log_xi) +
                                                                                                                                                                         1)/exp(log_xi)) - 1) * (log((1 + exp(log_xi) * x/exp(preds))) *
@@ -99,21 +133,64 @@ hess_gpd_xi <- function(x, preds, log_xi) {
                        (log((1 + exp(log_xi) * x/exp(preds))) * (exp(log_xi)/exp(log_xi) -
                                                                    (exp(log_xi) + 1) * exp(log_xi)/exp(log_xi)^2))))/(1/exp(preds) *
                                                                                                                         (1 + exp(log_xi) * x/exp(preds))^(-(exp(log_xi) + 1)/exp(log_xi)))^2
+  } else {
+    (1 + 1/exp(log_xi)) * ((exp(log_xi) * (exp(log_xi) + 1) + exp(log_xi) *
+                              exp(log_xi) + (exp(log_xi) * exp(log_xi) + exp(log_xi) *
+                                               exp(log_xi))) * x/exp(preds)/(1 + exp(log_xi) * (exp(log_xi) +
+                                                                                                  1) * x/exp(preds)) - (exp(log_xi) * (exp(log_xi) + 1) + exp(log_xi) *
+                                                                                                                          exp(log_xi)) * x/exp(preds) * ((exp(log_xi) * (exp(log_xi) +
+                                                                                                                                                                           1) + exp(log_xi) * exp(log_xi)) * x/exp(preds))/(1 + exp(log_xi) *
+                                                                                                                                                                                                                              (exp(log_xi) + 1) * x/exp(preds))^2) - exp(log_xi)/exp(log_xi)^2 *
+      ((exp(log_xi) * (exp(log_xi) + 1) + exp(log_xi) * exp(log_xi)) *
+         x/exp(preds)/(1 + exp(log_xi) * (exp(log_xi) + 1) * x/exp(preds))) -
+      ((exp(log_xi)/exp(log_xi)^2 - exp(log_xi) * (2 * (exp(log_xi) *
+                                                          exp(log_xi)))/(exp(log_xi)^2)^2) * log(1 + exp(log_xi) *
+                                                                                                   (exp(log_xi) + 1) * x/exp(preds)) + exp(log_xi)/exp(log_xi)^2 *
+         ((exp(log_xi) * (exp(log_xi) + 1) + exp(log_xi) * exp(log_xi)) *
+            x/exp(preds)/(1 + exp(log_xi) * (exp(log_xi) + 1) *
+                            x/exp(preds)))) - (exp(log_xi)/(exp(log_xi) + 1) -
+                                                 exp(log_xi) * exp(log_xi)/(exp(log_xi) + 1)^2)
+  }
 }
+
+
+myobjective_gpd_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
+  hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
+  return(list(grad = grad, hess = hess))
+}
+
 
 
 myobjective_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE)
-  hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE)
+  grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=FALSE)
+  hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=FALSE)
+  return(list(grad = grad, hess = hess))
+}
+
+
+myobjective_gpd_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
+  hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
   return(list(grad = grad, hess = hess))
 }
 
 
 myobjective_gpd_xi <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  grad <- grad_gpd_xi(labels, log_sigma, preds)
-  hess <- hess_gpd_xi(labels, log_sigma, preds)
+  grad <- grad_gpd_xi(labels, log_sigma, preds, orthogonal=FALSE)
+  hess <- hess_gpd_xi(labels, log_sigma, preds, orthogonal=FALSE)
+  return(list(grad = grad, hess = hess))
+}
+
+
+myobjective_gpd_xi_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  grad <- grad_gpd_xi(labels, log_sigma, preds, orthogonal=TRUE)
+  hess <- hess_gpd_xi(labels, log_sigma, preds, orthogonal=TRUE)
   return(list(grad = grad, hess = hess))
 }
 
@@ -129,7 +206,16 @@ myobjective_exponential <- function(preds, dtrain) {
 
 evalerror_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  p <-  d_prob(labels, preds, log_xi=log_xi , exponential=FALSE)
+  p <-  d_prob(labels, preds, log_xi=log_xi , exponential=FALSE, orthogonal=FALSE)
+  err <- mean( (p))
+  return(list(metric = "GPD_loss", value = err))
+}
+
+
+
+evalerror_gpd_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  p <-  d_prob(labels, preds, log_xi=log_xi , exponential=FALSE, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
 }
@@ -144,14 +230,30 @@ evalerror_exponential <- function(preds, dtrain) {
 
 evalerror_gpd_xi <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  p <-  d_prob(labels, log_sigma, log_xi=preds)
+  p <-  d_prob(labels, log_sigma, log_xi=preds, orthogonal=FALSE)
+  err <- mean( (p))
+  return(list(metric = "GPD_loss", value = err))
+}
+
+
+evalerror_gpd_xi_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  p <-  d_prob(labels, log_sigma, log_xi=preds, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
 }
 
 evalerror_gpd_cv <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  p <-  d_prob(labels, preds, log_xi=log_xi_out , exponential=FALSE)
+  p <-  d_prob(labels, preds, log_xi=log_xi_out , exponential=FALSE, orthogonal=FALSE)
+  err <- mean( (p))
+  return(list(metric = "GPD_loss", value = err))
+}
+
+
+evalerror_gpd_cv_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  p <-  d_prob(labels, preds, log_xi=log_xi_out , exponential=FALSE, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
 }
@@ -159,7 +261,15 @@ evalerror_gpd_cv <- function(preds, dtrain) {
 
 evalerror_gpd_xi_cv <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
-  p <-  d_prob(labels, log_sigma_out, log_xi=preds)
+  p <-  d_prob(labels, log_sigma_out, log_xi=preds, orthogonal=FALSE)
+  err <- mean( (p))
+  return(list(metric = "GPD_loss", value = err))
+}
+
+
+evalerror_gpd_xi_cv_ortho <- function(preds, dtrain) {
+  labels <- xgboost::getinfo(dtrain, "label")
+  p <-  d_prob(labels, log_sigma_out, log_xi=preds, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
 }

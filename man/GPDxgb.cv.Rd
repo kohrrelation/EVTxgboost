@@ -17,7 +17,8 @@ GPDxgb.cv(
   nrounds,
   xis = NULL,
   cv.nfold = 5,
-  nthread = NULL
+  nthread = NULL,
+  orthogonal = FALSE
 )
 }
 \arguments{
@@ -51,6 +52,8 @@ See \link[xgboost]{xgb.train} for more details.}
 \item{cv.nfold}{a positive scalar. Determines the number of folds for cross-validation.}
 
 \item{nthread}{a positive scalar. Number of thread used for cross-validation. If not supplied, all available cores are used}
+
+\item{orthogonal}{a logical. Should the two parameters be orthogonalized. By default, \code{FALSE}.}
 }
 \value{
 a list

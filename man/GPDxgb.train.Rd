@@ -15,7 +15,8 @@ GPDxgb.train(
   tree_depth = 5,
   tree_depth_xi = 3,
   nrounds,
-  X_test = NULL
+  X_test = NULL,
+  orthogonal = FALSE
 )
 }
 \arguments{
@@ -45,6 +46,8 @@ See \link[xgboost]{xgb.train} for more details.}
 See \link[xgboost]{xgb.train} for more details.}
 
 \item{X_test}{a matrix or data.frame object. Design matrix with the same row names as \code{X} to perform predictions on. By default set to \code{X}.}
+
+\item{orthogonal}{a logical. Should the two parameters be orthogonalized. By default, \code{FALSE}.}
 }
 \value{
 a list

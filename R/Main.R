@@ -18,13 +18,14 @@
 #' @param nrounds a positive numeric. \code{nrounds} parameter for xgboost calibration.
 #' See \link[xgboost]{xgb.train} for more details.
 #' @param X_test a matrix or data.frame object. Design matrix with the same row names as \code{X} to perform predictions on. By default set to \code{X}.
+#' @param orthogonal a logical. Should the two parameters be orthogonalized. By default, \code{FALSE}.
 #'
 #' @return a list
 #' @export
 #'
 #' @examples
 GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, stepsize_xi=0.1, tree_depth=5,
-                         tree_depth_xi=3, nrounds, X_test=NULL){
+                         tree_depth_xi=3, nrounds, X_test=NULL, orthogonal=FALSE){
 
   if (!inherits(X, "matrix") & !inherits(X, "data.frame"))
     stop("argument X must be a matrix or a data.frame")
@@ -49,6 +50,11 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
     X_test <- X
   }
 
+  if (orthogonal==TRUE){
+    init.sigma=(init.sigma*(xi+1))
+  }
+
+
   dtrain_all <- xgboost::xgb.DMatrix(data=as.matrix(X),label=y)
   xgboost::setinfo(dtrain_all, 'base_margin', rep(log(init.sigma), nrow(X)))
 
@@ -58,14 +64,25 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
 
   watchlist <- list(eval = dtrain_all)
 
+
+
+
   if (exponential==FALSE){
-    param_list <- list(booster = 'gbtree',
-                       objective= myobjective_gpd ,
-                       tree_method = 'hist',
-                       learning_rate=stepsize
-                       , max_depth=tree_depth,
-                       eval_metric= evalerror_gpd
-    )
+    if (orthogonal==FALSE){
+      param_list <- list(booster = 'gbtree',
+                         objective= myobjective_gpd ,
+                         tree_method = 'hist',
+                         learning_rate=stepsize
+                         , max_depth=tree_depth,
+                         eval_metric= evalerror_gpd)
+    } else {
+      param_list <- list(booster = 'gbtree',
+                         objective= myobjective_gpd_ortho ,
+                         tree_method = 'hist',
+                         learning_rate=stepsize
+                         , max_depth=tree_depth,
+                         eval_metric= evalerror_gpd_ortho)
+    }
   } else {
     param_list <- list(booster = 'gbtree',
                        objective= myobjective_exponential ,
@@ -102,13 +119,21 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
    xgboost::setinfo(dtrain_all_xi, 'base_margin', rep(log_xi, nrow(X)))
    watchlist_xi <- list(eval = dtrain_all_xi)
 
-   param_list_xi <- list(booster = 'gbtree',
-                      objective= myobjective_gpd_xi ,
-                      tree_method = 'hist',
-                      learning_rate=stepsize_xi
-                      , max_depth=tree_depth_xi,
-                      eval_metric= evalerror_gpd_xi
-   )
+   if (orthogonal==FALSE){
+     param_list_xi <- list(booster = 'gbtree',
+                        objective= myobjective_gpd_xi ,
+                        tree_method = 'hist',
+                        learning_rate=stepsize_xi
+                        , max_depth=tree_depth_xi,
+                        eval_metric= evalerror_gpd_xi)
+   } else {
+     param_list_xi <- list(booster = 'gbtree',
+                           objective= myobjective_gpd_xi_ortho ,
+                           tree_method = 'hist',
+                           learning_rate=stepsize_xi
+                           , max_depth=tree_depth_xi,
+                           eval_metric= evalerror_gpd_xi_ortho)
+   }
 
    xgb_model_xi <- xgboost::xgb.train(params = param_list_xi, data = dtrain_all_xi, watchlist=watchlist_xi,
                                    nrounds = 1, verbose=TRUE, maximize=FALSE)
@@ -183,6 +208,7 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
 #' @param xis a non-negative vector. Will be ignored if \code{simultaneous=TRUE}. If not supplied when \code{simultaneous=FALSE}, the argument \code{xi} will be used instead.
 #' @param cv.nfold a positive scalar. Determines the number of folds for cross-validation.
 #' @param nthread a positive scalar. Number of thread used for cross-validation. If not supplied, all available cores are used
+#' @param orthogonal a logical. Should the two parameters be orthogonalized. By default, \code{FALSE}.
 #'
 #' @return a list
 #' @export
@@ -190,7 +216,7 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
 #'
 #' @examples
 GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, stepsize_xi=0.1, tree_depth=5,
-                         tree_depth_xi=3, nrounds, xis=NULL, cv.nfold = 5, nthread=NULL){
+                         tree_depth_xi=3, nrounds, xis=NULL, cv.nfold = 5, nthread=NULL, orthogonal=FALSE){
 
   if (!inherits(X, "matrix") & !inherits(X, "data.frame"))
     stop("argument X must be a matrix or a data.frame")
@@ -211,6 +237,11 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
 
   if (init.sigma<=0)
     stop("Sigma must be positive")
+
+
+  if (orthogonal==TRUE){
+    init.sigma=(init.sigma*(xi+1))
+  }
 
   # if (nthread<=0)
   #   stop("nthread must be positive")
@@ -260,13 +291,23 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
       assignInNamespace(x="log_xi", value=log(xis[j]), ns="EVTxgboost")
 
       if (xis[j]!=0){
-        param_list <- list(booster = 'gbtree',
-                           objective= myobjective_gpd ,
-                           tree_method = 'hist',
-                           learning_rate=stepsize
-                           , max_depth=tree_depth,
-                           eval_metric= evalerror_gpd
+        if (orthogonal==FALSE){
+          param_list <- list(booster = 'gbtree',
+                             objective= myobjective_gpd ,
+                             tree_method = 'hist',
+                             learning_rate=stepsize
+                             , max_depth=tree_depth,
+                             eval_metric= evalerror_gpd
         )
+        } else {
+          param_list <- list(booster = 'gbtree',
+                             objective= myobjective_gpd_ortho ,
+                             tree_method = 'hist',
+                             learning_rate=stepsize
+                             , max_depth=tree_depth,
+                             eval_metric= evalerror_gpd_ortho
+          )
+        }
       } else {
         param_list <- list(booster = 'gbtree',
                            objective= myobjective_exponential ,
@@ -305,15 +346,19 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
     which.xi <- which(tab.cv[,3]==chosen_xi)
     indx.min <- tab.cv[which.min(tab.cv[,2]),1]
     indx.1se <- which(tab.cv[which.xi,2]<
-                        tab.cv[indx.min,4] )[1]
+                        tab.cv[which.xi,4][indx.min] )[1]
     if (is.na(indx.1se)){
       indx.1se <- indx.min
     }
 
+    table_values_2 <- table_values[which(table_values[,5]==chosen_xi),]
+
+
     gplt_xi <- ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = x, y = y, colour = factor(xi)), linetype = 1, data = table_values) +
       ggplot2::geom_point(ggplot2::aes(x = x, y = y, colour = factor(xi)), data = table_values)+
-      ggplot2::geom_ribbon(ggplot2::aes(x = x, y = y, ymin = ll95, ymax = ul95, colour = factor(xi)), alpha = 0.2, data = table_values)  +
+      ggplot2::geom_ribbon(ggplot2::aes(x = x, y = y, ymin = ll95, ymax = ul95), colour = 'grey',
+                           alpha = 0.2, data = table_values_2)  +
       ggplot2::xlab('Number of trees/boosting iterations') +ggplot2::ylab('Validation score') +
       ggplot2::theme_bw()+
       ggplot2::geom_hline(yintercept=tab.cv[which.xi,2][indx.1se], linetype='dashed', color='black', size=0.2) +
@@ -322,6 +367,7 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
     print(gplt_xi)
 
   } else {
+
 
     folds <- caret::createFolds(1:length(y), k = cv.nfold, list = TRUE, returnTrain = FALSE)
 
@@ -334,12 +380,37 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
       assignInNamespace(x="log_sigma", value=log(init.sigma), ns="EVTxgboost")
       assignInNamespace(x="log_sigma_out", value=log(init.sigma), ns="EVTxgboost")
 
-      param_list <- list(booster = 'gbtree',
-                         objective= myobjective_gpd ,
-                         tree_method = 'hist',
-                         learning_rate=stepsize
-                         , max_depth=tree_depth,
-                         eval_metric= evalerror_gpd_cv)
+
+      if (orthogonal==FALSE){
+
+        param_list <- list(booster = 'gbtree',
+                           objective= myobjective_gpd ,
+                           tree_method = 'hist',
+                           learning_rate=stepsize
+                           , max_depth=tree_depth,
+                           eval_metric= evalerror_gpd_cv)
+
+        param_list_xi <- list(booster = 'gbtree',
+                              objective= myobjective_gpd_xi ,
+                              tree_method = 'hist',
+                              learning_rate=stepsize_xi
+                              , max_depth=tree_depth_xi,
+                              eval_metric= evalerror_gpd_xi_cv)
+      } else {
+
+        param_list <- list(booster = 'gbtree',
+                           objective= myobjective_gpd_ortho ,
+                           tree_method = 'hist',
+                           learning_rate=stepsize
+                           , max_depth=tree_depth,
+                           eval_metric= evalerror_gpd_cv_ortho)
+        param_list_xi <- list(booster = 'gbtree',
+                              objective= myobjective_gpd_xi_ortho ,
+                              tree_method = 'hist',
+                              learning_rate=stepsize_xi
+                              , max_depth=tree_depth_xi,
+                              eval_metric= evalerror_gpd_xi_cv_ortho)
+      }
 
       dtrain_all <- xgboost::xgb.DMatrix(data=as.matrix(X[-out_obs,]),label=y[-out_obs])
       xgboost::setinfo(dtrain_all, 'base_margin', rep(log(init.sigma), nrow(as.matrix(X[-out_obs,]))))
@@ -362,13 +433,6 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
       xgboost::setinfo(dtrain_out_xi, 'base_margin', rep(log(xi), nrow(X[out_obs,])))
       watchlist_xi <- list(eval = dtrain_out_xi)
 
-      param_list_xi <- list(booster = 'gbtree',
-                            objective= myobjective_gpd_xi ,
-                            tree_method = 'hist',
-                            learning_rate=stepsize_xi
-                            , max_depth=tree_depth_xi,
-                            eval_metric= evalerror_gpd_xi_cv
-      )
 
       xgb_model_xi <- xgboost::xgb.train(params = param_list_xi, data = dtrain_all_xi, watchlist=watchlist_xi,
                                          nrounds = 1, verbose=TRUE, maximize=FALSE)

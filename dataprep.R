@@ -109,3 +109,15 @@ GB_DF <- data_train_DF
 save(GB_DF, file='GB.rda')
 
 
+
+
+
+####
+
+names(data_DF)
+data_train_DF <- data_DF[, -ncol(data_DF)]
+
+head(data_train_DF)
+
+save(data_train_DF, file='USA.rda')
+

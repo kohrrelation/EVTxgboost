@@ -168,6 +168,10 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
 
  }
 
+  if (orthogonal==TRUE){
+    sigma.pred <- sigma.pred/(xi.pred+1)
+  }
+
   result_list <- list()
 
   result_list$xgb_model <- xgb_model
@@ -300,6 +304,7 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
                              eval_metric= evalerror_gpd
         )
         } else {
+
           param_list <- list(booster = 'gbtree',
                              objective= myobjective_gpd_ortho ,
                              tree_method = 'hist',
@@ -356,7 +361,7 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
 
     gplt_xi <- ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = x, y = y, colour = factor(xi)), linetype = 1, data = table_values) +
-      ggplot2::geom_point(ggplot2::aes(x = x, y = y, colour = factor(xi)), data = table_values)+
+      ggplot2::geom_point(ggplot2::aes(x = x, y = y, colour = factor(xi)), size=0.2, data = table_values)+
       ggplot2::geom_ribbon(ggplot2::aes(x = x, y = y, ymin = ll95, ymax = ul95), colour = 'grey',
                            alpha = 0.2, data = table_values_2)  +
       ggplot2::xlab('Number of trees/boosting iterations') +ggplot2::ylab('Validation score') +
@@ -368,18 +373,17 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
 
   } else {
 
-
     folds <- caret::createFolds(1:length(y), k = cv.nfold, list = TRUE, returnTrain = FALSE)
 
     runXG <- function(i){
 
       out_obs <- folds[[i]]
 
+
       assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
       assignInNamespace(x="log_xi_out", value=log(xi), ns="EVTxgboost")
       assignInNamespace(x="log_sigma", value=log(init.sigma), ns="EVTxgboost")
       assignInNamespace(x="log_sigma_out", value=log(init.sigma), ns="EVTxgboost")
-
 
       if (orthogonal==FALSE){
 
@@ -403,14 +407,16 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
                            tree_method = 'hist',
                            learning_rate=stepsize
                            , max_depth=tree_depth,
-                           eval_metric= evalerror_gpd_cv_ortho)
+                           eval_metric= evalerror_gpd_cv)
+
         param_list_xi <- list(booster = 'gbtree',
-                              objective= myobjective_gpd_xi_ortho ,
+                              objective= myobjective_gpd_xi ,
                               tree_method = 'hist',
                               learning_rate=stepsize_xi
                               , max_depth=tree_depth_xi,
-                              eval_metric= evalerror_gpd_xi_cv_ortho)
+                              eval_metric= evalerror_gpd_xi_cv)
       }
+
 
       dtrain_all <- xgboost::xgb.DMatrix(data=as.matrix(X[-out_obs,]),label=y[-out_obs])
       xgboost::setinfo(dtrain_all, 'base_margin', rep(log(init.sigma), nrow(as.matrix(X[-out_obs,]))))
@@ -503,7 +509,7 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
 
     gplt_xi <- ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = x, y = y), linetype = 1, data = table_values) +
-      ggplot2::geom_point(ggplot2::aes(x = x, y = y), data = table_values)+
+      ggplot2::geom_point(ggplot2::aes(x = x, y = y), size=0.2, data = table_values)+
       ggplot2::geom_ribbon(ggplot2::aes(x = x, y = y, ymin = ll95, ymax = ul95), alpha = 0.2, data = table_values)  +
       ggplot2::xlab('Number of trees/boosting iterations') +ggplot2::ylab('Validation score') +
       ggplot2::theme_bw()+

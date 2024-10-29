@@ -154,15 +154,6 @@ hess_gpd_xi <- function(x, preds, log_xi, orthogonal=FALSE) {
 }
 
 
-myobjective_gpd_ortho <- function(preds, dtrain) {
-  labels <- xgboost::getinfo(dtrain, "label")
-  grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
-  hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
-  return(list(grad = grad, hess = hess))
-}
-
-
-
 myobjective_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
   grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=FALSE)

@@ -1,6 +1,6 @@
 
 
-n <- 30000
+n <- 10000
 X <- cbind(rnorm(n,0,2), rnorm(n,1,2), rnorm(n,4,2), rnorm(n,8,2))
 
 beta_truth <- exp(1+X[,1]/10 + (X[,4]>8)/10 )
@@ -19,11 +19,16 @@ mean(beta_truth)
 mean(xi_truth)
 
 
-test_result <- GPDxgb.train(y,X, xi=0.4, init.sigma=1, stepsize=0.01, stepsize_xi=0.01,
+test_result <- GPDxgb.train(y,X, xi=0.4, init.sigma=3, stepsize=0.02, stepsize_xi=0.01,
                             tree_depth = 3,
                             tree_depth_xi = 3,
-                            nrounds=10,
-                            simultaneous = TRUE, orthogonal = TRUE)
+                            nrounds=300,
+                            simultaneous = TRUE, orthogonal = FALSE)
+
+boxplot((beta_truth-test_result$sigma.pred))
+abline(h=0)
+boxplot(xi_truth-test_result$xi.pred)
+abline(h=0)
 
 test_cv <- GPDxgb.cv(y,X, xi=0.2, xis=seq(0.5,0.6,by=0.05),
                      init.sigma=1, stepsize=0.01, stepsize_xi=0.01,
@@ -33,11 +38,11 @@ test_cv <- GPDxgb.cv(y,X, xi=0.2, xis=seq(0.5,0.6,by=0.05),
                      simultaneous = FALSE, cv.nfold = 5)
 
 test_cv <- GPDxgb.cv(y,X, xi=0.2, xis=seq(0.5,0.6,by=0.05),
-                     init.sigma=1, stepsize=0.01, stepsize_xi=0.01,
+                     init.sigma=2, stepsize=0.01, stepsize_xi=0.05,
                      tree_depth = 3 ,
                      tree_depth_xi = 3,
-                     nrounds=100,
-                     simultaneous = TRUE, cv.nfold = 5, orthogonal=FALSE)
+                     nrounds=10,
+                     simultaneous = FALSE, cv.nfold = 5, orthogonal=TRUE)
 
 test_cv$chosen_xi
 test_cv$indx.1se
@@ -152,18 +157,24 @@ plot(exp(predict(xgb_model_xi, dtrain_all_xi)), x= X[,2], cex=0.2, pch=19)
 data(Cali_DF)
 colnames(Cali_DF)
 
+data(USA)
+
 
 data("GB_DF")
 DF <- rbind(GB_DF)
+# DF <- rbind(Cali_DF)
+#DF <- data_train_DF
 
 indx.train <- which(DF$year<2011)
 indx.test <- which(DF$year>=2011)
+
+DF$BA <- DF$BA/247.1
 hist(log10(DF$BA[indx.train]+1), breaks=150, xlab='log(BA+1)', main='')
 
 
 library(mev)
 
-seqs <- seq(quantile(DF$BA,0.85),quantile(DF$BA,0.99), length.out=20)
+seqs <- seq(quantile(DF$BA,0.8),quantile(DF$BA,0.99), length.out=35)
 par_est <- numeric()
 st_est <- numeric()
 
@@ -172,7 +183,7 @@ for (i in 1:length(seqs)){
   st_est[i] <- mev::gp.fit(DF$BA,seqs[i],show=FALSE)$std.err[2]
 }
 
-pdf(file='ba_dist.pdf', width=7, height=3)
+pdf(file='ba_dist.pdf', width=5.5, height=2.5)
 par(mfrow=c(1,3))
 hist(log10(DF$BA+1), xlab='log(BA+1)', main='')
 s <- NC.diag( x=DF$BA, u=seqs, my.xlab='BA (ac)')
@@ -186,38 +197,36 @@ dev.off()
 
 ecdf(DF$BA)(u)
 
+# u <- quantile(DF$BA[which(DF$BA>0)], 0.85)
+
 y <- DF$BA[indx.train]-u
 indx.excess <- which(y-u>0)
 y <- y[indx.excess]
-X <- DF[indx.train,3:37][indx.excess,]
+X <- DF[indx.train,3:37][indx.excess,][,-c(3,4)]
 
 fit_gpd <- mev::gp.fit(DF$BA[indx.train],u)$estimate
 init.sigma <- fit_gpd[1]
+xi.start <- fit_gpd[2]
 
-
-pdf(file='cv_xi.pdf', width=8, height=5)
-model_cv <- GPDxgb.cv(y,X, xi=0.8,init.sigma=init.sigma, stepsize=0.02, nrounds=200,
-                       simultaneous = FALSE, xis=seq(0.3,0.6,by=0.05), cv.nfold = 5)
+pdf(file='cv_xi.pdf', width=6, height=4)
+model_cv <- GPDxgb.cv(y, X, xi=xi.start, init.sigma=init.sigma,
+                      stepsize=0.01, nrounds=200, simultaneous=FALSE,
+                      xis=seq(0.2,0.8,by=0.05), cv.nfold = 3)
 dev.off()
 
 model_cv$indx.1se
 model_cv$chosen_xi
 model_cv$indx.min
 
-model_cv_2 <- model_cv
-model_cv <- list()
-model_cv$indx.1se <- model_cv_2$indx.1se
-model_cv$chosen_xi <- model_cv_2$chosen_xi
-model_cv$indx.min <- model_cv_2$indx.min
 
 
 
 y_test <- DF$BA[indx.test]-u
 indx.excess.test <- which(y_test-u>0)
-X_test <- DF[indx.test,3:37][indx.excess.test,]
+X_test <- DF[indx.test,3:37][indx.excess.test,][,-c(3,4)]
 
 
-model_fit <- GPDxgb.train(y,X, xi=model_cv$chosen_xi, init.sigma=init.sigma, stepsize=0.02,
+model_fit <- GPDxgb.train(y,X, xi=model_cv$chosen_xi, init.sigma=init.sigma, stepsize=0.01,
                             nrounds=model_cv$indx.1se,
                             simultaneous = FALSE, X_test=X_test )
 
@@ -226,18 +235,37 @@ model_fit$sigma.pred
 model_fit$xi
 
 
+xgboost::xgb.importance(model=model_fit$xgb_model)
 
-model_cv_2 <- GPDxgb.cv(y,X, xi=0.8,init.sigma=init.sigma, stepsize=0.01,stepsize_xi=0.01, nrounds=200,
-                      simultaneous = TRUE, cv.nfold = 5)
+hist(X_test$clim6, breaks=10)
+hist(X_test$clim2, breaks=10)
+
+
+
+
+model_cv_2 <- GPDxgb.cv(y,X, xi=model_cv$chosen_xi,init.sigma=fit_gpd[1],
+                        stepsize=0.01,stepsize_xi=0.01, nrounds=200,
+                      simultaneous = TRUE, cv.nfold = 3, orthogonal = FALSE)
 
 model_cv_2$indx.1se
 
-model_fit_2 <- GPDxgb.train(y,X, xi=0.8, init.sigma=init.sigma, stepsize=0.01,stepsize_xi=0.01,
+model_fit_2 <- GPDxgb.train(y,X, xi=model_cv$chosen_xi, init.sigma=fit_gpd[1], stepsize=0.01,stepsize_xi=0.01,
                           nrounds=round(model_cv_2$indx.1se/2),
-                          simultaneous = TRUE, X_test=X_test )
+                          simultaneous = TRUE, X_test=X_test , orthogonal = FALSE)
 
 max(model_fit_2$xi.pred)
 min(model_fit_2$xi.pred)
+plot(model_fit_2$xi.pred)
+
+
+dtrain <- xgboost::xgb.DMatrix(data = as.matrix(X), label = y)
+model_cv_3 <- xgboost::xgb.cv(data=dtrain, eta = 0.01, nrounds = 200, nfold=5)
+plot(model_cv_3$evaluation_log$test_rmse_mean)
+model_fit_3 <- xgboost::xgboost(data = dtrain, eta = 0.01, nrounds = 100)
+dtest <- xgboost::xgb.DMatrix(data = as.matrix(X_test), label = y_test[indx.excess.test])
+
+fit_gpd <- mev::gp.fit(DF$BA[indx.train],u)$estimate
+#init.sigma <- fit_gpd[1]
 
 test_excess <- y_test[indx.excess.test]; n.exc <- length(test_excess)
 crps_basic <- scoringRules::crps_gpd(test_excess, scale=rep(fit_gpd[1], n.exc ),
@@ -246,9 +274,61 @@ crps_model <- scoringRules::crps_gpd(test_excess, scale=model_fit$sigma.pred,
                                      shape=rep(model_fit$xi, n.exc ) )
 crps_model_2 <- scoringRules::crps_gpd(test_excess, scale=model_fit_2$sigma.pred,
                                        shape=(model_fit_2$xi.pred) )
+crps_model_3 <- scoringRules::crps_norm(test_excess, mean = predict(model_fit_3, dtest),
+                                        sd=1)
+
+hist(evd::pgpd(q=test_excess, scale = model_fit$sigma.pred, shape = model_fit$xi), breaks=25)
+hist(evd::pgpd(q=test_excess, scale = fit_gpd[1], shape = fit_gpd[2]), breaks=25)
+
 mean(crps_basic)
 mean(crps_model)
 mean(crps_model_2)
+mean(crps_model_3)
+
+level <- 1000
+
+plot(test_excess, x=1:length(test_excess), pch=19, cex=0.5)
+abline(h=level, lty='dashed')
+probs <- evd::pgpd(q=level, scale = model_fit$sigma.pred, shape = model_fit$xi,lower.tail=FALSE )
+par(new=TRUE)
+plot(y=probs, x=1:length(test_excess), pch=4, xlim=c(0,length(test_excess)),
+     axes=FALSE, col='red', cex=0.5, xlab='', ylab='', type='l')
+par(new=TRUE)
+plot(y=probs[which(test_excess>=level)], x=c(which(test_excess>=level)), pch=4, xlim=c(0,length(test_excess)),
+     axes=FALSE, col='red', cex=0.5, xlab='', ylab='')
+
+abline(h=evd::pgpd(q=level, scale = fit_gpd[1], shape = fit_gpd[2],lower.tail=FALSE ), pch=19, col='red', cex=0.5,
+       lty='dashed')
+mtext("Cell Density",side=4,col="red",line=4)
+axis(4, col="red",col.axis="red",las=1)
+
+test_excess[39]
+X_test[39,]
+probs[39]
+probs_2
+
+plot(evd::dgpd(seq(0.1,5000,length.out=100), scale = fit_gpd[1], shape = fit_gpd[2], log=TRUE), x=seq(0.1,5000,length.out=100),
+     type='l')
+lines(evd::dgpd(seq(0.1,5000,length.out=100), scale =  model_fit$sigma.pred[39], shape =  model_fit$xi, log=TRUE), x=seq(0.1,5000,length.out=100))
+abline(v=test_excess[39], col='red')
+
+
+plot(evd::dgpd(seq(0.1,5000,length.out=100), scale = fit_gpd[1], shape = fit_gpd[2], log=TRUE), x=seq(0.1,5000,length.out=100),
+     type='l')
+lines(evd::dgpd(seq(0.1,5000,length.out=100), scale =  model_fit$sigma.pred[which(test_excess>=level)[1]], shape =  model_fit$xi, log=TRUE), x=seq(0.1,5000,length.out=100))
+abline(v=test_excess[which(test_excess>=level)[1]], col='red')
+hist(X_test$clim6, breaks=10)
+abline(v=X_test$clim6[which(test_excess>=level)[1]])
+hist(X_test$clim2, breaks=10)
+abline(v=X_test$clim2[which(test_excess>=level)[1]])
+
+
+probs_2 <- evd::pgpd(q=500, scale = fit_gpd[1], shape = fit_gpd[2],lower.tail=FALSE )
+
+
+
+
+
 
 save(model_cv,crps_basic, crps_model, crps_model_2, file='model_test.rda')
 

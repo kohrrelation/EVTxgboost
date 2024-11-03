@@ -1,6 +1,6 @@
 
 
-n <- 10000
+n <- 1000
 X <- cbind(rnorm(n,0,2), rnorm(n,1,2), rnorm(n,4,2), rnorm(n,8,2))
 
 beta_truth <- exp(1+X[,1]/10 + (X[,4]>8)/10 )

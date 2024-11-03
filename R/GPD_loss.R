@@ -1,6 +1,6 @@
 
-log_xi <- log_xi_out <- log(0.1)
-log_sigma <- log_sigma_out <- log(1)
+# log_xi <- log_xi_out <- log(0.1)
+# log_sigma <- log_sigma_out <- log(1)
 
 d_prob <- function(x, preds, log_xi, exponential=FALSE, orthogonal=FALSE) {
   if (exponential==TRUE){
@@ -156,6 +156,7 @@ hess_gpd_xi <- function(x, preds, log_xi, orthogonal=FALSE) {
 
 myobjective_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi <- EVTxgboost_env$log_xi
   grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=FALSE)
   hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=FALSE)
   return(list(grad = grad, hess = hess))
@@ -164,6 +165,7 @@ myobjective_gpd <- function(preds, dtrain) {
 
 myobjective_gpd_ortho <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi <- EVTxgboost_env$log_xi
   grad <- grad_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
   hess <- hess_gpd(labels, preds, log_xi, exponential=FALSE, orthogonal=TRUE)
   return(list(grad = grad, hess = hess))
@@ -172,6 +174,7 @@ myobjective_gpd_ortho <- function(preds, dtrain) {
 
 myobjective_gpd_xi <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_sigma <- EVTxgboost_env$log_sigma
   grad <- grad_gpd_xi(labels, log_sigma, preds, orthogonal=FALSE)
   hess <- hess_gpd_xi(labels, log_sigma, preds, orthogonal=FALSE)
   return(list(grad = grad, hess = hess))
@@ -180,6 +183,7 @@ myobjective_gpd_xi <- function(preds, dtrain) {
 
 myobjective_gpd_xi_ortho <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_sigma <- EVTxgboost_env$log_sigma
   grad <- grad_gpd_xi(labels, log_sigma, preds, orthogonal=TRUE)
   hess <- hess_gpd_xi(labels, log_sigma, preds, orthogonal=TRUE)
   return(list(grad = grad, hess = hess))
@@ -188,6 +192,7 @@ myobjective_gpd_xi_ortho <- function(preds, dtrain) {
 
 myobjective_exponential <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi <- EVTxgboost_env$log_xi
   grad <- grad_gpd(labels, preds, log_xi, exponential=TRUE)
   hess <- hess_gpd(labels, preds, log_xi, exponential=TRUE)
   return(list(grad = grad, hess = hess))
@@ -197,6 +202,7 @@ myobjective_exponential <- function(preds, dtrain) {
 
 evalerror_gpd <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi <- EVTxgboost_env$log_xi
   p <-  d_prob(labels, preds, log_xi=log_xi , exponential=FALSE, orthogonal=FALSE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -206,6 +212,7 @@ evalerror_gpd <- function(preds, dtrain) {
 
 evalerror_gpd_ortho <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi <- EVTxgboost_env$log_xi
   p <-  d_prob(labels, preds, log_xi=log_xi , exponential=FALSE, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -221,6 +228,7 @@ evalerror_exponential <- function(preds, dtrain) {
 
 evalerror_gpd_xi <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_sigma <- EVTxgboost_env$log_sigma
   p <-  d_prob(labels, log_sigma, log_xi=preds, orthogonal=FALSE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -229,6 +237,7 @@ evalerror_gpd_xi <- function(preds, dtrain) {
 
 evalerror_gpd_xi_ortho <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_sigma <- EVTxgboost_env$log_sigma
   p <-  d_prob(labels, log_sigma, log_xi=preds, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -236,6 +245,7 @@ evalerror_gpd_xi_ortho <- function(preds, dtrain) {
 
 evalerror_gpd_cv <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi_out <- EVTxgboost_env$log_xi_out
   p <-  d_prob(labels, preds, log_xi=log_xi_out , exponential=FALSE, orthogonal=FALSE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -244,6 +254,7 @@ evalerror_gpd_cv <- function(preds, dtrain) {
 
 evalerror_gpd_cv_ortho <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_xi_out <- EVTxgboost_env$log_xi_out
   p <-  d_prob(labels, preds, log_xi=log_xi_out , exponential=FALSE, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -252,6 +263,7 @@ evalerror_gpd_cv_ortho <- function(preds, dtrain) {
 
 evalerror_gpd_xi_cv <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_sigma_out <- EVTxgboost_env$log_sigma_out
   p <-  d_prob(labels, log_sigma_out, log_xi=preds, orthogonal=FALSE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
@@ -260,9 +272,67 @@ evalerror_gpd_xi_cv <- function(preds, dtrain) {
 
 evalerror_gpd_xi_cv_ortho <- function(preds, dtrain) {
   labels <- xgboost::getinfo(dtrain, "label")
+  log_sigma_out <- EVTxgboost_env$log_sigma_out
   p <-  d_prob(labels, log_sigma_out, log_xi=preds, orthogonal=TRUE)
   err <- mean( (p))
   return(list(metric = "GPD_loss", value = err))
 }
+
+
+
+EVTxgboost_env <- new.env(parent = emptyenv())
+
+update_log_sigma <- function(xgb_model, dtrain_all) {
+  # Calculate the new value for log_sigma
+  log_sigma_value <- predict(xgb_model, dtrain_all)
+
+  # Assign the calculated value to the environment
+  EVTxgboost_env$log_sigma <- log_sigma_value
+}
+
+
+update_log_sigma_out <- function(xgb_model, dtrain_all) {
+  # Calculate the new value for log_sigma
+  log_sigma_value <- predict(xgb_model, dtrain_all)
+
+  # Assign the calculated value to the environment
+  EVTxgboost_env$log_sigma_out <- log_sigma_value
+}
+
+
+update_log_xi <- function(xgb_model, dtrain_all) {
+  # Calculate the new value for log_sigma
+  log_xi_value <- predict(xgb_model, dtrain_all)
+
+  # Assign the calculated value to the environment
+  EVTxgboost_env$log_xi <- log_xi_value
+}
+
+
+update_log_xi_out <- function(xgb_model, dtrain_all) {
+  # Calculate the new value for log_sigma
+  log_xi_value <- predict(xgb_model, dtrain_all)
+
+  # Assign the calculated value to the environment
+  EVTxgboost_env$log_xi_out <- log_xi_value
+}
+
+get_log_sigma <- function() {
+  return(EVTxgboost_env$log_sigma)
+}
+
+get_log_xi <- function() {
+  return(EVTxgboost_env$log_xi)
+}
+
+
+get_log_sigma_out <- function() {
+  return(EVTxgboost_env$log_sigma_out)
+}
+
+get_log_xi_out <- function() {
+  return(EVTxgboost_env$log_xi_out)
+}
+
 
 

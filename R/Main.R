@@ -58,9 +58,10 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
   dtrain_all <- xgboost::xgb.DMatrix(data=as.matrix(X),label=y)
   xgboost::setinfo(dtrain_all, 'base_margin', rep(log(init.sigma), nrow(X)))
 
+  #assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
+  #assign(x="log_xi", value=log(xi))
   #log_xi <- log(xi)
-
-  assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
+  EVTxgboost_env$log_xi <- log(xi)
 
   watchlist <- list(eval = dtrain_all)
 
@@ -113,7 +114,11 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
    xgb_model <- xgboost::xgb.train(params = param_list, data = dtrain_all, watchlist=watchlist,
                                    nrounds = 1, verbose=TRUE, maximize=FALSE)
 
-   assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
+   #assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
+   #assign(x="log_sigma", value=predict(xgb_model, dtrain_all))
+   update_log_sigma(xgb_model, dtrain_all)
+   log_sigma <- get_log_sigma()
+   log_xi <- get_log_xi()
 
    dtrain_all_xi <- xgboost::xgb.DMatrix(data=as.matrix(X),label=y)
    xgboost::setinfo(dtrain_all_xi, 'base_margin', rep(log_xi, nrow(X)))
@@ -138,17 +143,25 @@ GPDxgb.train <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1,
    xgb_model_xi <- xgboost::xgb.train(params = param_list_xi, data = dtrain_all_xi, watchlist=watchlist_xi,
                                    nrounds = 1, verbose=TRUE, maximize=FALSE)
 
-   assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
-
+   #assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
+   #assign(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi))
+   update_log_xi(xgb_model_xi, dtrain_all_xi)
+   log_xi <- get_log_xi()
 
    if (nrounds>1){
     for (iter in 2:nrounds){
       xgb_model <- xgboost::xgb.train(params = param_list, data = dtrain_all, watchlist=watchlist,
                                       nrounds = 1, verbose=TRUE, maximize=FALSE, xgb_model = xgb_model)
-      assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
+      #assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
+      #assign(x="log_sigma", value=predict(xgb_model, dtrain_all))
+      update_log_sigma(xgb_model, dtrain_all)
+      log_sigma <- get_log_sigma()
       xgb_model_xi <- xgboost::xgb.train(params = param_list_xi, data = dtrain_all_xi, watchlist=watchlist_xi,
                                          nrounds = 1, verbose=TRUE, maximize=FALSE, xgb_model = xgb_model_xi)
-      assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
+      #assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
+      #assign(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi))
+      update_log_xi(xgb_model_xi, dtrain_all_xi)
+      log_xi <- get_log_xi()
     }
    }
 
@@ -256,7 +269,9 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
   #log_xi <- log(xi)
 
 
-  assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
+  #assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
+  #assign(x="log_xi", value=log(xi))
+  EVTxgboost_env$log_xi <- log(xi)
 
   watchlist <- list(eval = dtrain_all)
 
@@ -292,7 +307,9 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
     model_list_cv <- list()
 
     for (j in 1:length(xis)){
-      assignInNamespace(x="log_xi", value=log(xis[j]), ns="EVTxgboost")
+      #assignInNamespace(x="log_xi", value=log(xis[j]), ns="EVTxgboost")
+      #assign(x="log_xi", value=log(xis[j]))
+      EVTxgboost_env$log_xi <- log(xis[j])
 
       if (xis[j]!=0){
         if (orthogonal==FALSE){
@@ -380,10 +397,19 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
       out_obs <- folds[[i]]
 
 
-      assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
-      assignInNamespace(x="log_xi_out", value=log(xi), ns="EVTxgboost")
-      assignInNamespace(x="log_sigma", value=log(init.sigma), ns="EVTxgboost")
-      assignInNamespace(x="log_sigma_out", value=log(init.sigma), ns="EVTxgboost")
+      # assignInNamespace(x="log_xi", value=log(xi), ns="EVTxgboost")
+      # assignInNamespace(x="log_xi_out", value=log(xi), ns="EVTxgboost")
+      # assignInNamespace(x="log_sigma", value=log(init.sigma), ns="EVTxgboost")
+      # assignInNamespace(x="log_sigma_out", value=log(init.sigma), ns="EVTxgboost")
+      # assign(x="log_xi", value=log(xi))
+      # assign(x="log_xi_out", value=log(xi))
+      # assign(x="log_sigma", value=log(init.sigma))
+      # assign(x="log_sigma_out", value=log(init.sigma))
+      EVTxgboost_env$log_xi <- log(xi)
+      EVTxgboost_env$log_xi_out <- log(xi)
+      EVTxgboost_env$log_sigma <- log(init.sigma)
+      EVTxgboost_env$log_sigma_out <- log(init.sigma)
+
 
       if (orthogonal==FALSE){
 
@@ -429,8 +455,10 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
       xgb_model <- xgboost::xgb.train(params = param_list, data = dtrain_all, watchlist=watchlist,
                                       nrounds = 1, verbose=TRUE, maximize=FALSE)
 
-      assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
-      assignInNamespace(x="log_sigma_out", value=predict(xgb_model, dtrain_out), ns="EVTxgboost")
+      # assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
+      # assignInNamespace(x="log_sigma_out", value=predict(xgb_model, dtrain_out), ns="EVTxgboost")
+      assign(x="log_sigma", value=predict(xgb_model, dtrain_all))
+      assign(x="log_sigma_out", value=predict(xgb_model, dtrain_out))
 
       dtrain_all_xi <- xgboost::xgb.DMatrix(data=as.matrix(X[-out_obs,]),label=y[-out_obs])
       xgboost::setinfo(dtrain_all_xi, 'base_margin', rep(log(xi), nrow(X[-out_obs,])))
@@ -443,8 +471,14 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
       xgb_model_xi <- xgboost::xgb.train(params = param_list_xi, data = dtrain_all_xi, watchlist=watchlist_xi,
                                          nrounds = 1, verbose=TRUE, maximize=FALSE)
 
-      assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
-      assignInNamespace(x="log_xi_out", value=predict(xgb_model_xi, dtrain_out_xi), ns="EVTxgboost")
+      # assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
+      # assignInNamespace(x="log_xi_out", value=predict(xgb_model_xi, dtrain_out_xi), ns="EVTxgboost")
+      # assign(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi))
+      # assign(x="log_xi_out", value=predict(xgb_model_xi, dtrain_out_xi))
+      update_log_xi(xgb_model_xi,dtrain_all_xi)
+      update_log_xi_out(xgb_model_xi,dtrain_out_xi)
+      log_xi <- get_log_xi()
+      log_xi_out <- get_log_xi_out()
 
       #log_xi <- predict(xgb_model_xi, dtrain_all_xi)
 
@@ -453,12 +487,25 @@ GPDxgb.cv <- function(y, X, xi, simultaneous=FALSE, init.sigma, stepsize=0.1, st
         for (iter in 2:nrounds){
           xgb_model <- xgboost::xgb.train(params = param_list, data = dtrain_all, watchlist=watchlist,
                                           nrounds = 1, verbose=TRUE, maximize=FALSE, xgb_model = xgb_model)
-          assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
-          assignInNamespace(x="log_sigma_out", value=predict(xgb_model, dtrain_out), ns="EVTxgboost")
+          # assignInNamespace(x="log_sigma", value=predict(xgb_model, dtrain_all), ns="EVTxgboost")
+          # assignInNamespace(x="log_sigma_out", value=predict(xgb_model, dtrain_out), ns="EVTxgboost")
+          # assign(x="log_sigma", value=predict(xgb_model, dtrain_all))
+          # assign(x="log_sigma_out", value=predict(xgb_model, dtrain_out))
+          update_log_sigma(xgb_model,dtrain_all)
+          update_log_sigma_out(xgb_model,dtrain_out)
+          log_sigma <- get_log_sigma()
+          log_sigma_out <- get_log_sigma_out()
+
           xgb_model_xi <- xgboost::xgb.train(params = param_list_xi, data = dtrain_all_xi, watchlist=watchlist_xi,
                                              nrounds = 1, verbose=TRUE, maximize=FALSE, xgb_model = xgb_model_xi)
-          assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
-          assignInNamespace(x="log_xi_out", value=predict(xgb_model_xi, dtrain_out_xi), ns="EVTxgboost")
+          # assignInNamespace(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi), ns="EVTxgboost")
+          # assignInNamespace(x="log_xi_out", value=predict(xgb_model_xi, dtrain_out_xi), ns="EVTxgboost")
+          # assign(x="log_xi", value=predict(xgb_model_xi, dtrain_all_xi))
+          # assign(x="log_xi_out", value=predict(xgb_model_xi, dtrain_out_xi))
+          update_log_xi(xgb_model_xi,dtrain_all_xi)
+          update_log_xi_out(xgb_model_xi,dtrain_out_xi)
+          log_xi <- get_log_xi()
+          log_xi_out <- get_log_xi_out()
         }
       }
 
